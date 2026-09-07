@@ -31,7 +31,7 @@ def ensure_iso_directory():
         return False
 
 
-def list_isos():
+def list_isos(directory=None):
     """Return a list of ISO files stored by VIFG."""
 
     if not ensure_iso_directory():
