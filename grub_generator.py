@@ -37,12 +37,9 @@ def generate_iso_entry(iso):
     ]
 
 
-def generate_grub_script():
+def generate_grub_script(directory=None):
     """Generate the VIFG GRUB script."""
-
-    isos = list_isos()
-
-    lines = [HEADER.rstrip()]
+    isos = list_isos(directory)
 
     # Main VIFG entry
     lines.append("")
