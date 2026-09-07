@@ -2,20 +2,11 @@
 VIFG - Virtual ISO for GRUB
 
 GRUB script generator.
-
-Esta versão apenas gera o ficheiro 40_vifg.
-Não executa update-grub.
 """
-
-from pathlib import Path
 
 from config import GRUB_SCRIPT
 from iso_manager import list_isos
 
-
-# ==========================================
-# Cabeçalho
-# ==========================================
 
 HEADER = """#!/bin/sh
 exec tail -n +3 $0
@@ -28,25 +19,39 @@ exec tail -n +3 $0
 """
 
 
-# ==========================================
-# Gerar menu
-# ==========================================
+def escape_grub_text(text):
+    """Escape text for use inside a GRUB single-quoted string."""
+
+    return text.replace("'", "''")
+
+
+def generate_iso_entry(iso):
+    """Generate a GRUB menu entry for an ISO."""
+
+    name = escape_grub_text(iso.name)
+
+    return [
+        f"    menuentry '{name}' {{",
+        f"        echo 'ISO selecionada: {name}'",
+        "    }",
+    ]
+
 
 def generate_grub_script():
     """Generate the VIFG GRUB script."""
 
     isos = list_isos()
 
-    lines = [HEADER]
+    lines = [HEADER.rstrip()]
 
+    # Main VIFG entry
+    lines.append("")
     lines.append("menuentry 'VIFG' {")
-
     lines.append("    echo 'VIFG - Virtual ISO for GRUB'")
     lines.append("}")
 
+    # ISO submenu
     lines.append("")
-
-    # Submenu
     lines.append("submenu 'VIFG ISOs' {")
 
     if not isos:
@@ -55,20 +60,13 @@ def generate_grub_script():
         lines.append("    }")
     else:
         for iso in isos:
-            name = iso.name
-
-            lines.append(f"    menuentry '{name}' {{")
-            lines.append(f"        echo 'ISO selecionada: {name}'")
-            lines.append("    }")
+            lines.extend(generate_iso_entry(iso))
+            lines.append("")
 
     lines.append("}")
 
     return "\n".join(lines) + "\n"
 
-
-# ==========================================
-# Guardar ficheiro
-# ==========================================
 
 def save_grub_script(content):
     """Save the generated GRUB script."""
@@ -79,7 +77,6 @@ def save_grub_script(content):
         with GRUB_SCRIPT.open("w", encoding="utf-8") as file:
             file.write(content)
 
-        # Tornar o script executável
         GRUB_SCRIPT.chmod(0o755)
 
         return True
@@ -87,8 +84,6 @@ def save_grub_script(content):
     except PermissionError:
         print("[X] Sem permissões para escrever:")
         print(f"    {GRUB_SCRIPT}")
-        print()
-        print("Este ficheiro normalmente requer permissões de administrador.")
         return False
 
     except OSError as error:
@@ -96,19 +91,15 @@ def save_grub_script(content):
         return False
 
 
-# ==========================================
-# Função principal
-# ==========================================
-
 def generate_and_save():
     """Generate and save the VIFG GRUB script."""
 
     print()
     print("[+] A gerar configuração do VIFG...")
+    print()
 
     content = generate_grub_script()
 
-    print()
     print("---------- CONFIGURAÇÃO GERADA ----------")
     print(content, end="")
     print("-----------------------------------------")
@@ -116,10 +107,6 @@ def generate_and_save():
 
     return save_grub_script(content)
 
-
-# ==========================================
-# Teste
-# ==========================================
 
 if __name__ == "__main__":
     generate_and_save()
