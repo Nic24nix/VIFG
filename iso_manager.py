@@ -1,4 +1,3 @@
-```python
 """
 VIFG - Virtual ISO for GRUB
 
@@ -167,4 +166,3 @@ def get_iso_info(iso):
         "size": get_iso_size(iso),
         "size_formatted": format_size(get_iso_size(iso)),
     }
-```
