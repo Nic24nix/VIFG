@@ -22,6 +22,7 @@ APP_DESCRIPTION = "Virtual ISO for GRUB"
 
 # Where VIFG stores ISO files
 ISO_DIR = Path("/boot/vifg")
+TEST_ISO_DIR = Path("/tmp/vifg-test")
 
 # Main VIFG installation directory
 VIFG_DIR = Path("/opt/vifg")
