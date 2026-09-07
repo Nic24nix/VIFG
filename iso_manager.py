@@ -32,14 +32,19 @@ def ensure_iso_directory():
 
 
 def list_isos(directory=None):
-    """Return a list of ISO files stored by VIFG."""
+    """Return a list of ISO files."""
 
-    if not ensure_iso_directory():
+    if directory is None:
+        directory = ISO_DIR
+    else:
+        directory = Path(directory)
+
+    if not directory.is_dir():
         return []
 
     isos = []
 
-    for file in ISO_DIR.iterdir():
+    for file in directory.iterdir():
         if file.is_file() and file.suffix.lower() == ".iso":
             isos.append(file)
 
