@@ -1,4 +1,4 @@
-```python
+python
 """
 VIFG - Virtual ISO for GRUB
 
