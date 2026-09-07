@@ -1,4 +1,3 @@
-```python
 """
 VIFG - Virtual ISO for GRUB
 
@@ -62,4 +61,3 @@ def get_vifg_directory() -> Path:
 def get_grub_script() -> Path:
     """Return the VIFG GRUB script path."""
     return GRUB_SCRIPT
-```
