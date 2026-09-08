@@ -40,13 +40,13 @@ def generate_iso_entry(iso):
 def generate_grub_script(directory=None):
     """Generate the VIFG GRUB script."""
     isos = list_isos(directory)
+    lines = [HEADER.rstrip()]
 
     # Main VIFG entry
     lines.append("")
     lines.append("menuentry 'VIFG' {")
     lines.append("    echo 'VIFG - Virtual ISO for GRUB'")
     lines.append("}")
-
     # ISO submenu
     lines.append("")
     lines.append("submenu 'VIFG ISOs' {")
