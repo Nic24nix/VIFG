@@ -41,14 +41,12 @@ def list_iso_files(iso):
             check=False,
         )
 
-       if result.returncode != 0:
-    return []
+        if result.returncode != 0:
+            return []
 
-files = []
+        files = []
 
-output = result.stdout + result.stderr
-
-for line in output.splitlines():
+        for line in result.stdout.splitlines():
             line = line.strip()
 
             if line.startswith("'") and line.endswith("'"):
@@ -64,12 +62,7 @@ for line in output.splitlines():
 
 
 def inspect_iso(iso):
-    """
-    Inspect an ISO and look for common boot files.
-
-    Returns:
-        dict: Information found inside the ISO.
-    """
+    """Inspect an ISO and detect common boot files."""
 
     iso = Path(iso)
 
@@ -87,12 +80,6 @@ def inspect_iso(iso):
 
     files = list_iso_files(iso)
 
-    normalized_files = {
-        file.lower(): file
-        for file in files
-    }
-
-    # Ubuntu / Debian live ISO
     for file in files:
         lower = file.lower()
 
@@ -108,12 +95,10 @@ def inspect_iso(iso):
             result["initrd"] = file
             result["casper"] = True
 
-    # Windows ISO
-    for file in files:
-        if file.lower() == "/sources/boot.wim":
+        elif lower == "/sources/boot.wim":
             result["boot_wim"] = file
 
-    # Detect type from actual ISO contents
+    # Detect type from actual contents
     if result["boot_wim"]:
         result["type"] = "windows"
 
@@ -121,7 +106,7 @@ def inspect_iso(iso):
         result["type"] = "debian"
 
     else:
-        # Fallback to filename detection
+        # Fallback: detect from filename
         name = iso.name.lower()
 
         if any(word in name for word in [
