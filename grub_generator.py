@@ -62,29 +62,29 @@ def generate_iso_entry(iso):
 
     elif info["boot_wim"] and info["boot_efi"]:
 
-    boot_efi = info["boot_efi"]
+        boot_efi = info["boot_efi"]
 
-    lines.append(
-        f"        echo 'ISO Windows detetada.'"
-    )
+        lines.append(
+            "        echo 'ISO Windows detetada.'"
+        )
 
-    lines.append(
-        f"        echo 'Bootloader EFI: {boot_efi}'"
-    )
+        lines.append(
+            f"        echo 'Bootloader EFI: {boot_efi}'"
+        )
 
-    lines.append(
-        "        echo 'Teste de boot Windows ainda não implementado.'"
-    )
+        lines.append(
+            "        echo 'Teste de boot Windows ainda não implementado.'"
+        )
 
-elif info["boot_wim"]:
+    elif info["boot_wim"]:
 
-    lines.append(
-        "        echo 'ISO Windows detetada.'"
-    )
+        lines.append(
+            "        echo 'ISO Windows detetada.'"
+        )
 
-    lines.append(
-        "        echo 'boot.wim encontrado, mas EFI não encontrada.'"
-    )
+        lines.append(
+            "        echo 'boot.wim encontrado, mas EFI não encontrada.'"
+        )
 
     else:
 
@@ -112,15 +112,9 @@ def generate_grub_script(directory=None):
 
     if not isos:
 
-        lines.append(
-            "    menuentry 'Nenhuma ISO encontrada' {"
-        )
-
-        lines.append(
-            "        echo 'Nenhuma ISO foi adicionada ao VIFG.'"
-        )
-
-        lines.append("    ")
+        lines.append("    menuentry 'Nenhuma ISO encontrada' {")
+        lines.append("        echo 'Nenhuma ISO foi adicionada ao VIFG.'")
+        lines.append("    }")
 
     else:
 
@@ -170,3 +164,24 @@ def save_grub_script(content, destination=None):
     except OSError as error:
         print(f"[X] Erro ao guardar script: {error}")
         return False
+
+
+def generate_and_save():
+    """Generate and save the VIFG GRUB script."""
+
+    print()
+    print("[+] A gerar configuração do VIFG...")
+    print()
+
+    content = generate_grub_script()
+
+    print("---------- CONFIGURAÇÃO GERADA ----------")
+    print(content, end="")
+    print("-----------------------------------------")
+    print()
+
+    return save_grub_script(content)
+
+
+if __name__ == "__main__":
+    generate_and_save()
