@@ -1,10 +1,7 @@
 """
 VIFG - Virtual ISO for GRUB
 
-ISO inspection module.
-
-Analisa o conteúdo real de uma ISO usando xorriso.
-Não modifica o sistema.
+Inspects ISO contents using xorriso.
 """
 
 import shutil
@@ -12,29 +9,30 @@ import subprocess
 from pathlib import Path
 
 
-def list_iso_files(iso):
-    """Return the files contained in an ISO."""
+def xorriso_available():
+    return shutil.which("xorriso") is not None
 
+
+def get_iso_listing(iso):
     iso = Path(iso)
 
     if not iso.is_file():
         return []
 
-    xorriso = shutil.which("xorriso")
-
-    if xorriso is None:
+    if not xorriso_available():
         return []
 
     try:
         result = subprocess.run(
             [
-                xorriso,
+                "xorriso",
                 "-indev",
                 str(iso),
                 "-find",
                 "/",
                 "-type",
                 "f",
+                "-print",
             ],
             capture_output=True,
             text=True,
@@ -44,101 +42,53 @@ def list_iso_files(iso):
         if result.returncode != 0:
             return []
 
-        files = []
-
-        for line in result.stdout.splitlines():
-            line = line.strip()
-
-            if line.startswith("'") and line.endswith("'"):
-                line = line[1:-1]
-
-            if line:
-                files.append(line)
-
-        return files
+        return [
+            line.strip()
+            for line in result.stdout.splitlines()
+            if line.strip()
+        ]
 
     except OSError:
         return []
 
 
 def inspect_iso(iso):
-    """Inspect an ISO and detect common boot files."""
+    files = get_iso_listing(iso)
 
-    iso = Path(iso)
-
-    result = {
-        "exists": iso.is_file(),
-        "type": "unknown",
-        "kernel": None,
-        "initrd": None,
-        "boot_wim": None,
-        "casper": False,
-    }
-
-    if not result["exists"]:
-        return result
-
-    files = list_iso_files(iso)
+    kernel = None
+    initrd = None
+    boot_wim = None
 
     for file in files:
-        lower = file.lower()
+        normalized = file.lower()
 
-        if lower == "/casper/vmlinuz":
-            result["kernel"] = file
-            result["casper"] = True
+        if normalized.endswith("/vmlinuz"):
+            kernel = file
 
-        elif lower in [
-            "/casper/initrd",
-            "/casper/initrd.lz",
-            "/casper/initrd.gz",
-        ]:
-            result["initrd"] = file
-            result["casper"] = True
+        elif normalized.endswith("/vmlinuz-linux"):
+            kernel = file
 
-        elif lower == "/sources/boot.wim":
-            result["boot_wim"] = file
+        elif normalized.endswith("/initrd"):
+            initrd = file
 
-    # Detect type from actual contents
-    if result["boot_wim"]:
-        result["type"] = "windows"
+        elif normalized.endswith("/initrd.img"):
+            initrd = file
 
-    elif result["kernel"] and result["initrd"]:
-        result["type"] = "debian"
+        elif normalized.endswith("/initramfs-linux.img"):
+            initrd = file
 
-    else:
-        # Fallback: detect from filename
-        name = iso.name.lower()
+        elif normalized.endswith("/sources/boot.wim"):
+            boot_wim = file
 
-        if any(word in name for word in [
-            "ubuntu",
-            "kubuntu",
-            "xubuntu",
-            "lubuntu",
-            "debian",
-            "linuxmint",
-        ]):
-            result["type"] = "debian"
-
-        elif any(word in name for word in [
-            "arch",
-            "manjaro",
-            "endeavouros",
-            "garuda",
-        ]):
-            result["type"] = "arch"
-
-        elif any(word in name for word in [
-            "fedora",
-            "nobara",
-        ]):
-            result["type"] = "fedora"
-
-    return result
+    return {
+        "kernel": kernel,
+        "initrd": initrd,
+        "boot_wim": boot_wim,
+        "files": files,
+    }
 
 
-def print_iso_info(iso):
-    """Print information about an ISO."""
-
+def print_inspection(iso):
     info = inspect_iso(iso)
 
     print()
@@ -147,30 +97,24 @@ def print_iso_info(iso):
     print("=" * 42)
     print()
 
-    print(f"ISO:       {Path(iso).name}")
-
-    if info["exists"]:
-        print("[✓] Ficheiro encontrado.")
-    else:
-        print("[X] Ficheiro não encontrado.")
-        return
-
-    print(f"Tipo:      {info['type']}")
-
+    print(f"ISO: {Path(iso).name}")
     print()
+
     print("Boot files:")
-    print(f"  Kernel:   {info['kernel'] or 'Não encontrado'}")
-    print(f"  Initrd:   {info['initrd'] or 'Não encontrado'}")
-    print(f"  boot.wim: {info['boot_wim'] or 'Não encontrado'}")
+
+    print(
+        f"  Kernel:   "
+        f"{info['kernel'] or 'Não encontrado'}"
+    )
+
+    print(
+        f"  Initrd:   "
+        f"{info['initrd'] or 'Não encontrado'}"
+    )
+
+    print(
+        f"  boot.wim: "
+        f"{info['boot_wim'] or 'Não encontrado'}"
+    )
+
     print()
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Uso:")
-        print("  python3 iso_inspector.py ficheiro.iso")
-        sys.exit(1)
-
-    print_iso_info(sys.argv[1])
