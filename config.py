@@ -1,64 +1,40 @@
 """
 VIFG - Virtual ISO for GRUB
 
-Central configuration for the VIFG application.
+Central configuration.
 """
 
 from pathlib import Path
 
 
-# ==========================================
-# Application
-# ==========================================
-
 APP_NAME = "VIFG"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 APP_DESCRIPTION = "Virtual ISO for GRUB"
 
-
-# ==========================================
-# Directories
-# ==========================================
-
-# Where VIFG stores ISO files
 ISO_DIR = Path("/boot/vifg")
-TEST_ISO_DIR = Path("/tmp/vifg-test")
-
-# Main VIFG installation directory
 VIFG_DIR = Path("/opt/vifg")
-
-
-# ==========================================
-# GRUB
-# ==========================================
-
-# VIFG's GRUB script
 GRUB_SCRIPT = Path("/etc/grub.d/40_vifg")
+GRUB_CONFIG = Path("/etc/default/grub")
+GRUB_CFG = Path("/boot/grub/grub.cfg")
 
-
-# ==========================================
-# Limits
-# ==========================================
-
-# Maximum number of ISOs VIFG should display
-# This is only a UI limit for now.
 MAX_ISOS = 100
 
 
-# ==========================================
-# Helper functions
-# ==========================================
-
-def get_iso_directory() -> Path:
-    """Return the directory where VIFG stores ISO files."""
+def get_iso_directory():
     return ISO_DIR
 
 
-def get_vifg_directory() -> Path:
-    """Return the VIFG installation directory."""
+def get_vifg_directory():
     return VIFG_DIR
 
 
-def get_grub_script() -> Path:
-    """Return the VIFG GRUB script path."""
+def get_grub_script():
     return GRUB_SCRIPT
+
+
+def get_grub_config():
+    return GRUB_CONFIG
+
+
+def get_grub_cfg():
+    return GRUB_CFG
