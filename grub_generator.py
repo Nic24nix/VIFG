@@ -4,6 +4,8 @@ VIFG - Virtual ISO for GRUB
 GRUB script generator.
 """
 
+from pathlib import Path
+
 from config import GRUB_SCRIPT
 from iso_manager import list_isos
 
@@ -21,7 +23,6 @@ exec tail -n +3 $0
 
 def escape_grub_text(text):
     """Escape text for use inside a GRUB single-quoted string."""
-
     return text.replace("'", "''")
 
 
@@ -39,6 +40,7 @@ def generate_iso_entry(iso):
 
 def generate_grub_script(directory=None):
     """Generate the VIFG GRUB script."""
+
     isos = list_isos(directory)
     lines = [HEADER.rstrip()]
 
@@ -47,6 +49,7 @@ def generate_grub_script(directory=None):
     lines.append("menuentry 'VIFG' {")
     lines.append("    echo 'VIFG - Virtual ISO for GRUB'")
     lines.append("}")
+
     # ISO submenu
     lines.append("")
     lines.append("submenu 'VIFG ISOs' {")
@@ -65,22 +68,28 @@ def generate_grub_script(directory=None):
     return "\n".join(lines) + "\n"
 
 
-def save_grub_script(content):
+def save_grub_script(content, destination=None):
     """Save the generated GRUB script."""
 
-    try:
-        GRUB_SCRIPT.parent.mkdir(parents=True, exist_ok=True)
+    if destination is None:
+        destination = GRUB_SCRIPT
+    else:
+        destination = Path(destination)
 
-        with GRUB_SCRIPT.open("w", encoding="utf-8") as file:
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+
+        with destination.open("w", encoding="utf-8") as file:
             file.write(content)
 
-        GRUB_SCRIPT.chmod(0o755)
+        destination.chmod(0o755)
 
+        print(f"[✓] Script GRUB guardado em: {destination}")
         return True
 
     except PermissionError:
         print("[X] Sem permissões para escrever:")
-        print(f"    {GRUB_SCRIPT}")
+        print(f"    {destination}")
         return False
 
     except OSError as error:
