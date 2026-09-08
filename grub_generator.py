@@ -31,7 +31,7 @@ def generate_iso_entry(iso):
     """Generate a GRUB menu entry for an ISO."""
 
     name = escape_grub_text(iso.name)
-    path = f"/boot/vifg/{name}"
+    path = f"/vifg/{name}"
 
     info = inspect_iso(iso)
 
