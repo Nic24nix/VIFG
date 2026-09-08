@@ -41,12 +41,14 @@ def list_iso_files(iso):
             check=False,
         )
 
-        if result.returncode != 0:
-            return []
+       if result.returncode != 0:
+    return []
 
-        files = []
+files = []
 
-        for line in result.stdout.splitlines():
+output = result.stdout + result.stderr
+
+for line in output.splitlines():
             line = line.strip()
 
             if line.startswith("'") and line.endswith("'"):
