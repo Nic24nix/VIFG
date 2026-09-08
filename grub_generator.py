@@ -41,25 +41,32 @@ def generate_iso_entry(iso):
         f"        loopback loop '{path}'",
     ]
 
+    # Linux ISO with kernel and initrd
     if info["kernel"] and info["initrd"]:
         kernel = info["kernel"]
         initrd = info["initrd"]
 
         lines.append(
-            f"        linux (loop){kernel} boot=casper iso-scan/filename={path}"
+            f"        linux (loop){kernel} "
+            f"boot=casper iso-scan/filename={path}"
         )
         lines.append(
             f"        initrd (loop){initrd}"
         )
 
+    # Windows ISO with boot.wim
     elif info["boot_wim"]:
         lines.append(
             "        echo 'ISO Windows detetada.'"
         )
         lines.append(
-            "        echo 'Boot Windows ainda não implementado.'"
+            f"        echo 'boot.wim encontrado em {info['boot_wim']}.'"
+        )
+        lines.append(
+            "        echo 'Boot Windows pelo VIFG ainda não implementado.'"
         )
 
+    # Unknown ISO
     else:
         lines.append(
             "        echo 'Não foi possível determinar como arrancar esta ISO.'"
@@ -74,13 +81,16 @@ def generate_grub_script(directory=None):
     """Generate the VIFG GRUB script."""
 
     isos = list_isos(directory)
+
     lines = [HEADER.rstrip()]
 
+    # Main VIFG entry
     lines.append("")
     lines.append("menuentry 'VIFG' {")
     lines.append("    echo 'VIFG - Virtual ISO for GRUB'")
     lines.append("}")
 
+    # ISO submenu
     lines.append("")
     lines.append("submenu 'VIFG ISOs' {")
 
@@ -88,6 +98,7 @@ def generate_grub_script(directory=None):
         lines.append("    menuentry 'Nenhuma ISO encontrada' {")
         lines.append("        echo 'Nenhuma ISO foi adicionada ao VIFG.'")
         lines.append("    }")
+
     else:
         for iso in isos:
             lines.extend(generate_iso_entry(iso))
