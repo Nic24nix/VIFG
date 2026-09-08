@@ -1,4 +1,3 @@
-```python
 """
 VIFG - Virtual ISO for GRUB
 
@@ -65,4 +64,3 @@ def install_grub_script(content, destination):
     except OSError as error:
         print(f"[X] Erro ao instalar o script: {error}")
         return False
-```
