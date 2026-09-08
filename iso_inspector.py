@@ -2,7 +2,7 @@
 VIFG - Virtual ISO for GRUB
 
 ISO inspection module.
-Inspects the real contents of an ISO using xorriso.
+Inspects the real contents of an ISO using xorriso and 7z.
 """
 
 import shutil
@@ -17,19 +17,22 @@ def xorriso_available():
     return shutil.which("xorriso") is not None
 
 
-def list_iso_files(iso):
-    """
-    Return a list of files contained in the ISO.
+def seven_zip_available():
+    """Check whether 7z is installed."""
+    return shutil.which("7z") is not None
 
-    Uses xorriso in read-only mode.
+
+def list_iso_files_xorriso(iso):
     """
+    Return a list of files contained in the ISO using xorriso.
+    """
+
     iso = Path(iso)
 
     if not iso.is_file():
         return []
 
     if not xorriso_available():
-        print("[X] xorriso não está instalado.")
         return []
 
     command = [
@@ -40,7 +43,6 @@ def list_iso_files(iso):
         "/",
         "-type",
         "f",
-        "-print",
     ]
 
     try:
@@ -64,13 +66,85 @@ def list_iso_files(iso):
 
         return files
 
-    except OSError as error:
-        print(f"[X] Erro ao executar xorriso: {error}")
+    except OSError:
         return []
+
+
+def list_iso_files_7z(iso):
+    """
+    Return a list of files contained in the ISO using 7z.
+
+    This supports UDF ISOs such as modern Windows installation media.
+    """
+
+    iso = Path(iso)
+
+    if not iso.is_file():
+        return []
+
+    if not seven_zip_available():
+        return []
+
+    command = [
+        "7z",
+        "l",
+        "-slt",
+        str(iso),
+    ]
+
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            return []
+
+        files = []
+
+        for line in result.stdout.splitlines():
+            if not line.startswith("Path = "):
+                continue
+
+            path = line[len("Path = "):].strip()
+
+            if not path:
+                continue
+
+            if path == iso.name:
+                continue
+
+            files.append("/" + path.lstrip("/"))
+
+        return files
+
+    except OSError:
+        return []
+
+
+def list_iso_files(iso):
+    """
+    Return a list of files contained in the ISO.
+
+    Tries xorriso first and then 7z.
+    """
+
+    files = list_iso_files_xorriso(iso)
+
+    if files:
+        return files
+
+    files = list_iso_files_7z(iso)
+
+    return files
 
 
 def find_file(files, names):
     """Find a file by checking its basename."""
+
     names = {name.lower() for name in names}
 
     for file in files:
@@ -88,11 +162,13 @@ def find_boot_files(files):
         kernel
         initrd
         boot_wim
+        boot_efi
     """
 
     kernel = None
     initrd = None
     boot_wim = None
+    boot_efi = None
 
     # -------------------------------------------------
     # Linux kernels
@@ -105,10 +181,8 @@ def find_boot_files(files):
         "vmlinuz-linux-lts",
     }
 
-    # First try exact/common names.
     kernel = find_file(files, kernel_names)
 
-    # Then look for files beginning with "vmlinuz".
     if kernel is None:
         for file in files:
             filename = Path(file).name.lower()
@@ -136,9 +210,6 @@ def find_boot_files(files):
 
     initrd = find_file(files, initrd_names)
 
-    # Also support files such as:
-    # initrd.img-6.x.x
-    # initramfs-6.x.x.img
     if initrd is None:
         for file in files:
             filename = Path(file).name.lower()
@@ -167,25 +238,28 @@ def find_boot_files(files):
                 boot_wim = file
                 break
 
+    # -------------------------------------------------
+    # Windows EFI bootloader
+    # -------------------------------------------------
+
+    for file in files:
+        normalized = file.lower()
+
+        if normalized == "/efi/boot/bootx64.efi":
+            boot_efi = file
+            break
+
     return {
         "kernel": kernel,
         "initrd": initrd,
         "boot_wim": boot_wim,
+        "boot_efi": boot_efi,
     }
 
 
 def inspect_iso(iso):
     """
     Inspect an ISO and determine its boot files and type.
-
-    Returns a dictionary containing:
-        name
-        path
-        type
-        type_name
-        kernel
-        initrd
-        boot_wim
     """
 
     iso = Path(iso)
@@ -200,6 +274,7 @@ def inspect_iso(iso):
         "kernel": None,
         "initrd": None,
         "boot_wim": None,
+        "boot_efi": None,
     }
 
     if not iso.is_file():
@@ -213,6 +288,18 @@ def inspect_iso(iso):
     boot_files = find_boot_files(files)
 
     result.update(boot_files)
+
+    # -------------------------------------------------
+    # Determine type from real contents
+    # -------------------------------------------------
+
+    if result["boot_wim"] or result["boot_efi"]:
+        result["type"] = "windows"
+        result["type_name"] = "Microsoft Windows"
+
+    elif result["kernel"] and result["initrd"]:
+        result["type"] = "debian"
+        result["type_name"] = "Linux / Debian-based"
 
     return result
 
@@ -232,7 +319,7 @@ def print_iso_inspection(iso):
         print("[X] Ficheiro não encontrado.")
         return
 
-    print(f"[✓] Ficheiro encontrado.")
+    print("[✓] Ficheiro encontrado.")
     print(f"Nome: {iso.name}")
 
     info = inspect_iso(iso)
@@ -244,14 +331,23 @@ def print_iso_inspection(iso):
     print(f"  Kernel:   {info['kernel'] or 'Não encontrado'}")
     print(f"  Initrd:   {info['initrd'] or 'Não encontrado'}")
     print(f"  boot.wim: {info['boot_wim'] or 'Não encontrado'}")
+    print(f"  EFI:      {info['boot_efi'] or 'Não encontrado'}")
     print()
 
     if info["kernel"] and info["initrd"]:
         print("[✓] Kernel e initrd encontrados.")
         print("[✓] ISO Linux preparada para boot pelo VIFG.")
+
+    elif info["boot_wim"] and info["boot_efi"]:
+        print("[✓] boot.wim encontrado.")
+        print("[✓] EFI bootloader encontrado.")
+        print("[✓] ISO Windows reconhecida pelo VIFG.")
+        print("[!] Boot Windows pelo VIFG ainda não implementado.")
+
     elif info["boot_wim"]:
         print("[✓] boot.wim encontrado.")
         print("[!] Boot Windows pelo VIFG ainda não implementado.")
+
     else:
         print("[X] Não foi possível determinar como arrancar esta ISO.")
 
