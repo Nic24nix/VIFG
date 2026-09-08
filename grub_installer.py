@@ -1,66 +1,195 @@
 """
 VIFG - Virtual ISO for GRUB
 
-Safe GRUB script installation module.
+Safe GRUB installation.
 """
 
 import shutil
+import subprocess
+from datetime import datetime
 from pathlib import Path
+
+from config import GRUB_CFG, GRUB_SCRIPT
 
 
 def backup_file(path):
-    """Create a backup of an existing file."""
-
     path = Path(path)
 
     if not path.is_file():
         return None
 
-    backup = path.with_suffix(path.suffix + ".backup")
+    timestamp = datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    )
+
+    backup = Path(
+        f"{path}.vifg-backup-{timestamp}"
+    )
 
     try:
         shutil.copy2(path, backup)
-        print(f"[✓] Backup criado: {backup}")
+
+        print(
+            f"[✓] Backup criado: {backup}"
+        )
+
         return backup
+
     except OSError as error:
-        print(f"[X] Erro ao criar backup: {error}")
+        print(
+            f"[X] Não foi possível criar backup: "
+            f"{error}"
+        )
+
         return None
 
 
-def install_grub_script(content, destination):
-    """
-    Safely install a generated GRUB script.
+def validate_grub_script(script):
+    checker = shutil.which("grub-script-check")
 
-    The destination is supplied explicitly so tests can use /tmp.
-    """
+    if checker is None:
+        print(
+            "[!] grub-script-check não encontrado."
+        )
 
-    destination = Path(destination)
+        return True
+
+    result = subprocess.run(
+        [checker, str(script)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+
+        print("[X] O script GRUB falhou na validação.")
+
+        if result.stderr:
+            print(result.stderr)
+
+        return False
+
+    print("[✓] Script GRUB válido.")
+    return True
+
+
+def install_grub_script(content):
+    destination = GRUB_SCRIPT
 
     try:
-        destination.parent.mkdir(parents=True, exist_ok=True)
 
-        # Backup existing script before replacing it.
         if destination.exists():
-            backup = backup_file(destination)
+            backup_file(destination)
 
-            if backup is None:
-                print("[X] Não foi possível criar o backup.")
-                return False
+        destination.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-        # Write the new script.
-        with destination.open("w", encoding="utf-8") as file:
+        with destination.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
             file.write(content)
 
-        # GRUB scripts must be executable.
         destination.chmod(0o755)
 
-        print(f"[✓] Script instalado em: {destination}")
+        print(
+            f"[✓] Script instalado em "
+            f"{destination}"
+        )
+
         return True
 
     except PermissionError:
-        print(f"[X] Sem permissões para escrever: {destination}")
+        print(
+            "[X] Sem permissões para instalar "
+            "o script GRUB."
+        )
+
         return False
 
     except OSError as error:
-        print(f"[X] Erro ao instalar o script: {error}")
+        print(
+            f"[X] Erro ao instalar script: "
+            f"{error}"
+        )
+
         return False
+
+
+def regenerate_grub():
+    """
+    Regenerate grub.cfg using the distro's tool.
+    """
+
+    update_grub = shutil.which("update-grub")
+    grub_mkconfig = shutil.which("grub-mkconfig")
+
+    if update_grub:
+
+        command = [update_grub]
+
+    elif grub_mkconfig:
+
+        command = [
+            grub_mkconfig,
+            "-o",
+            str(GRUB_CFG),
+        ]
+
+    else:
+
+        print(
+            "[X] Nem update-grub nem "
+            "grub-mkconfig foram encontrados."
+        )
+
+        return False
+
+    print()
+    print("[+] A regenerar o GRUB...")
+
+    result = subprocess.run(
+        command,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+
+        print(
+            "[X] A regeneração do GRUB falhou."
+        )
+
+        return False
+
+    print("[✓] GRUB regenerado com sucesso.")
+
+    return True
+
+
+def install_and_regenerate(content):
+    """
+    Full safe installation.
+    """
+
+    if not install_grub_script(content):
+        return False
+
+    if not validate_grub_script(GRUB_SCRIPT):
+        return False
+
+    if GRUB_CFG.exists():
+        print()
+        print("[+] A criar backup do grub.cfg...")
+
+        if backup_file(GRUB_CFG) is None:
+            print(
+                "[X] Backup do grub.cfg falhou."
+            )
+
+            return False
+
+    return regenerate_grub()
