@@ -30,10 +30,13 @@ def generate_iso_entry(iso):
     """Generate a GRUB menu entry for an ISO."""
 
     name = escape_grub_text(iso.name)
+    path = f"/boot/vifg/{name}"
 
     return [
         f"    menuentry '{name}' {{",
-        f"        echo 'ISO selecionada: {name}'",
+        f"        echo 'A carregar {name}...'",
+        f"        loopback loop '{path}'",
+        "        echo 'Loopback criado com sucesso.'",
         "    }",
     ]
 
@@ -44,13 +47,11 @@ def generate_grub_script(directory=None):
     isos = list_isos(directory)
     lines = [HEADER.rstrip()]
 
-    # Main VIFG entry
     lines.append("")
     lines.append("menuentry 'VIFG' {")
     lines.append("    echo 'VIFG - Virtual ISO for GRUB'")
     lines.append("}")
 
-    # ISO submenu
     lines.append("")
     lines.append("submenu 'VIFG ISOs' {")
 
