@@ -60,15 +60,31 @@ def generate_iso_entry(iso):
             f"        initrd (loop){initrd}"
         )
 
-    elif info["boot_wim"]:
+    elif info["boot_wim"] and info["boot_efi"]:
 
-        lines.append(
-            "        echo 'ISO Windows detetada.'"
-        )
+    boot_efi = info["boot_efi"]
 
-        lines.append(
-            "        echo 'Boot Windows ainda não implementado.'"
-        )
+    lines.append(
+        f"        echo 'ISO Windows detetada.'"
+    )
+
+    lines.append(
+        f"        echo 'Bootloader EFI: {boot_efi}'"
+    )
+
+    lines.append(
+        "        echo 'Teste de boot Windows ainda não implementado.'"
+    )
+
+elif info["boot_wim"]:
+
+    lines.append(
+        "        echo 'ISO Windows detetada.'"
+    )
+
+    lines.append(
+        "        echo 'boot.wim encontrado, mas EFI não encontrada.'"
+    )
 
     else:
 
