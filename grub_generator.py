@@ -1,14 +1,15 @@
 """
 VIFG - Virtual ISO for GRUB
 
-GRUB script generator.
+GRUB configuration generator.
 """
 
 from pathlib import Path
 
 from config import GRUB_SCRIPT
-from iso_manager import list_isos
+from grub import get_grub_iso_path
 from iso_inspector import inspect_iso
+from iso_manager import list_isos
 
 
 HEADER = """#!/bin/sh
@@ -23,51 +24,54 @@ exec tail -n +3 $0
 
 
 def escape_grub_text(text):
-    """Escape text for use inside a GRUB single-quoted string."""
-    return text.replace("'", "''")
+    """
+    Escape text for a GRUB single-quoted string.
+    """
+
+    return str(text).replace("'", "''")
 
 
 def generate_iso_entry(iso):
-    """Generate a GRUB menu entry for an ISO."""
+    iso = Path(iso)
 
     name = escape_grub_text(iso.name)
-    path = f"/vifg/{name}"
+    grub_path = get_grub_iso_path(iso.name)
 
     info = inspect_iso(iso)
 
     lines = [
         f"    menuentry '{name}' {{",
         f"        echo 'A carregar {name}...'",
-        f"        loopback loop '{path}'",
+        f"        loopback loop '{grub_path}'",
     ]
 
-    # Linux ISO with kernel and initrd
     if info["kernel"] and info["initrd"]:
+
         kernel = info["kernel"]
         initrd = info["initrd"]
 
         lines.append(
             f"        linux (loop){kernel} "
-            f"boot=casper iso-scan/filename={path}"
+            f"boot=casper "
+            f"iso-scan/filename={grub_path}"
         )
+
         lines.append(
             f"        initrd (loop){initrd}"
         )
 
-    # Windows ISO with boot.wim
     elif info["boot_wim"]:
+
         lines.append(
             "        echo 'ISO Windows detetada.'"
         )
+
         lines.append(
-            f"        echo 'boot.wim encontrado em {info['boot_wim']}.'"
-        )
-        lines.append(
-            "        echo 'Boot Windows pelo VIFG ainda não implementado.'"
+            "        echo 'Boot Windows ainda não implementado.'"
         )
 
-    # Unknown ISO
     else:
+
         lines.append(
             "        echo 'Não foi possível determinar como arrancar esta ISO.'"
         )
@@ -78,28 +82,32 @@ def generate_iso_entry(iso):
 
 
 def generate_grub_script(directory=None):
-    """Generate the VIFG GRUB script."""
-
     isos = list_isos(directory)
 
     lines = [HEADER.rstrip()]
 
-    # Main VIFG entry
     lines.append("")
     lines.append("menuentry 'VIFG' {")
     lines.append("    echo 'VIFG - Virtual ISO for GRUB'")
     lines.append("}")
 
-    # ISO submenu
     lines.append("")
     lines.append("submenu 'VIFG ISOs' {")
 
     if not isos:
-        lines.append("    menuentry 'Nenhuma ISO encontrada' {")
-        lines.append("        echo 'Nenhuma ISO foi adicionada ao VIFG.'")
-        lines.append("    }")
+
+        lines.append(
+            "    menuentry 'Nenhuma ISO encontrada' {"
+        )
+
+        lines.append(
+            "        echo 'Nenhuma ISO foi adicionada ao VIFG.'"
+        )
+
+        lines.append("    ")
 
     else:
+
         for iso in isos:
             lines.extend(generate_iso_entry(iso))
             lines.append("")
@@ -110,50 +118,39 @@ def generate_grub_script(directory=None):
 
 
 def save_grub_script(content, destination=None):
-    """Save the generated GRUB script."""
-
     if destination is None:
         destination = GRUB_SCRIPT
     else:
         destination = Path(destination)
 
     try:
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-        with destination.open("w", encoding="utf-8") as file:
+        with destination.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
             file.write(content)
 
         destination.chmod(0o755)
 
-        print(f"[✓] Script GRUB guardado em: {destination}")
+        print(
+            f"[✓] Script GRUB guardado em: "
+            f"{destination}"
+        )
+
         return True
 
     except PermissionError:
-        print("[X] Sem permissões para escrever:")
-        print(f"    {destination}")
+        print(
+            f"[X] Sem permissões para escrever: "
+            f"{destination}"
+        )
         return False
 
     except OSError as error:
-        print(f"[X] Erro ao guardar o script: {error}")
+        print(f"[X] Erro ao guardar script: {error}")
         return False
-
-
-def generate_and_save():
-    """Generate and save the VIFG GRUB script."""
-
-    print()
-    print("[+] A gerar configuração do VIFG...")
-    print()
-
-    content = generate_grub_script()
-
-    print("---------- CONFIGURAÇÃO GERADA ----------")
-    print(content, end="")
-    print("-----------------------------------------")
-    print()
-
-    return save_grub_script(content)
-
-
-if __name__ == "__main__":
-    generate_and_save()
