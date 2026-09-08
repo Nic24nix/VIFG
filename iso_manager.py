@@ -1,39 +1,31 @@
 """
 VIFG - Virtual ISO for GRUB
 
-ISO management module.
+ISO management.
 """
 
 import shutil
 from pathlib import Path
 
-from config import ISO_DIR
+from config import ISO_DIR, MAX_ISOS
 
-
-# ==========================================
-# ISO Manager
-# ==========================================
 
 def ensure_iso_directory():
-    """Create the ISO directory if it does not exist."""
-
     try:
         ISO_DIR.mkdir(parents=True, exist_ok=True)
         return True
 
     except PermissionError:
-        print("[X] Sem permissões para criar o diretório das ISOs.")
-        print(f"    Diretório: {ISO_DIR}")
+        print("[X] Sem permissões para criar:")
+        print(f"    {ISO_DIR}")
         return False
 
     except OSError as error:
-        print(f"[X] Erro ao criar o diretório das ISOs: {error}")
+        print(f"[X] Erro ao criar diretório: {error}")
         return False
 
 
 def list_isos(directory=None):
-    """Return a list of ISO files."""
-
     if directory is None:
         directory = ISO_DIR
     else:
@@ -42,57 +34,60 @@ def list_isos(directory=None):
     if not directory.is_dir():
         return []
 
-    isos = []
-
-    for file in directory.iterdir():
-        if file.is_file() and file.suffix.lower() == ".iso":
-            isos.append(file)
-
-    return sorted(isos, key=lambda path: path.name.lower())
+    return sorted(
+        [
+            file
+            for file in directory.iterdir()
+            if file.is_file()
+            and file.suffix.lower() == ".iso"
+        ],
+        key=lambda path: path.name.lower(),
+    )
 
 
 def iso_exists(name):
-    """Check whether an ISO already exists."""
-
-    iso_path = ISO_DIR / name
-    return iso_path.is_file()
+    return (ISO_DIR / name).is_file()
 
 
 def add_iso(source):
-    """Copy an ISO into the VIFG ISO directory."""
-
     source = Path(source)
 
     if not source.exists():
-        print(f"[X] Ficheiro não encontrado: {source}")
+        print(f"[X] ISO não encontrada: {source}")
         return False
 
     if not source.is_file():
-        print("[X] O caminho indicado não é um ficheiro.")
+        print("[X] O caminho não é um ficheiro.")
         return False
 
     if source.suffix.lower() != ".iso":
-        print("[X] O ficheiro indicado não é uma ISO.")
+        print("[X] O ficheiro não é uma ISO.")
         return False
 
     if not ensure_iso_directory():
         return False
 
+    current_isos = list_isos()
+
+    if len(current_isos) >= MAX_ISOS:
+        print(f"[X] Limite máximo de {MAX_ISOS} ISOs atingido.")
+        return False
+
     destination = ISO_DIR / source.name
 
     if destination.exists():
-        print(f"[X] Já existe uma ISO com esse nome:")
-        print(f"    {destination.name}")
+        print(f"[X] Já existe:")
+        print(f"    {destination}")
         return False
 
     try:
         print()
-        print(f"[+] A copiar: {source.name}")
-        print(f"    Destino: {destination}")
+        print(f"[+] A copiar {source.name}...")
+        print(f"    → {destination}")
 
         shutil.copy2(source, destination)
 
-        print("[✓] ISO adicionada com sucesso.")
+        print("[✓] ISO adicionada.")
         return True
 
     except PermissionError:
@@ -100,53 +95,35 @@ def add_iso(source):
         return False
 
     except OSError as error:
-        print(f"[X] Erro ao copiar a ISO: {error}")
+        print(f"[X] Erro ao copiar ISO: {error}")
         return False
 
 
 def remove_iso(name):
-    """Remove an ISO from the VIFG ISO directory."""
+    iso = ISO_DIR / name
 
-    iso_path = ISO_DIR / name
-
-    if not iso_path.is_file():
+    if not iso.is_file():
         print(f"[X] ISO não encontrada: {name}")
         return False
 
-    if iso_path.suffix.lower() != ".iso":
-        print("[X] O ficheiro indicado não é uma ISO.")
-        return False
-
     try:
-        iso_path.unlink()
-
+        iso.unlink()
         print(f"[✓] ISO removida: {name}")
         return True
 
-    except PermissionError:
-        print("[X] Sem permissões para remover a ISO.")
-        return False
-
     except OSError as error:
-        print(f"[X] Erro ao remover a ISO: {error}")
+        print(f"[X] Erro ao remover ISO: {error}")
         return False
 
 
 def get_iso_size(iso):
-    """Return the size of an ISO in bytes."""
-
-    iso = Path(iso)
-
     try:
-        return iso.stat().st_size
-
+        return Path(iso).stat().st_size
     except OSError:
         return 0
 
 
 def format_size(size):
-    """Convert bytes into a human-readable size."""
-
     units = ["B", "KB", "MB", "GB", "TB"]
 
     size = float(size)
@@ -161,13 +138,13 @@ def format_size(size):
 
 
 def get_iso_info(iso):
-    """Return basic information about an ISO."""
-
     iso = Path(iso)
+
+    size = get_iso_size(iso)
 
     return {
         "name": iso.name,
         "path": iso,
-        "size": get_iso_size(iso),
-        "size_formatted": format_size(get_iso_size(iso)),
+        "size": size,
+        "size_formatted": format_size(size),
     }
