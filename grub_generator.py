@@ -1,3 +1,4 @@
+```python
 """
 VIFG - Virtual ISO for GRUB
 
@@ -8,6 +9,7 @@ from pathlib import Path
 
 from config import GRUB_SCRIPT
 from iso_manager import list_isos
+from iso_inspector import inspect_iso
 
 
 HEADER = """#!/bin/sh
@@ -32,13 +34,41 @@ def generate_iso_entry(iso):
     name = escape_grub_text(iso.name)
     path = f"/boot/vifg/{name}"
 
-    return [
+    info = inspect_iso(iso)
+
+    lines = [
         f"    menuentry '{name}' {{",
         f"        echo 'A carregar {name}...'",
         f"        loopback loop '{path}'",
-        "        echo 'Loopback criado com sucesso.'",
-        "    }",
     ]
+
+    if info["kernel"] and info["initrd"]:
+        kernel = info["kernel"]
+        initrd = info["initrd"]
+
+        lines.append(
+            f"        linux (loop){kernel} boot=casper iso-scan/filename={path}"
+        )
+        lines.append(
+            f"        initrd (loop){initrd}"
+        )
+
+    elif info["boot_wim"]:
+        lines.append(
+            "        echo 'ISO Windows detetada.'"
+        )
+        lines.append(
+            "        echo 'Boot Windows ainda não implementado.'"
+        )
+
+    else:
+        lines.append(
+            "        echo 'Não foi possível determinar como arrancar esta ISO.'"
+        )
+
+    lines.append("    }")
+
+    return lines
 
 
 def generate_grub_script(directory=None):
@@ -117,3 +147,4 @@ def generate_and_save():
 
 if __name__ == "__main__":
     generate_and_save()
+```
