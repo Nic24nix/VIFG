@@ -1,7 +1,7 @@
 """
 VIFG - Virtual ISO for GRUB
 
-ISO type detection module.
+Basic ISO type detection.
 """
 
 from pathlib import Path
@@ -9,10 +9,9 @@ from pathlib import Path
 
 def detect_iso_type(iso):
     """
-    Detect the type of an ISO.
+    Detect a basic ISO family from its contents.
 
-    Returns:
-        str: Detected ISO type.
+    This function is intentionally conservative.
     """
 
     iso = Path(iso)
@@ -22,52 +21,30 @@ def detect_iso_type(iso):
 
     name = iso.name.lower()
 
-    # Ubuntu / Debian based
-    if any(word in name for word in [
-        "ubuntu",
-        "kubuntu",
-        "xubuntu",
-        "lubuntu",
-        "linuxmint",
-        "debian",
-    ]):
+    if "windows" in name:
+        return "windows"
+
+    if "ubuntu" in name:
+        return "ubuntu"
+
+    if "debian" in name:
         return "debian"
 
-    # Arch based
-    if any(word in name for word in [
-        "arch",
-        "manjaro",
-        "endeavouros",
-        "garuda",
-    ]):
-        return "arch"
-
-    # Fedora based
-    if any(word in name for word in [
-        "fedora",
-        "nobara",
-    ]):
+    if "fedora" in name:
         return "fedora"
 
-    # Windows
-    if any(word in name for word in [
-        "windows",
-        "win10",
-        "win11",
-        "win7",
-    ]):
-        return "windows"
+    if "arch" in name:
+        return "arch"
 
     return "unknown"
 
 
 def get_iso_type_name(iso_type):
-    """Return a human-readable ISO type name."""
-
     names = {
-        "debian": "Debian/Ubuntu",
-        "arch": "Arch Linux",
+        "ubuntu": "Ubuntu",
+        "debian": "Debian",
         "fedora": "Fedora",
+        "arch": "Arch Linux",
         "windows": "Windows",
         "unknown": "Desconhecido",
     }
@@ -76,8 +53,6 @@ def get_iso_type_name(iso_type):
 
 
 def get_iso_info(iso):
-    """Return detection information about an ISO."""
-
     iso_type = detect_iso_type(iso)
 
     return {
@@ -85,24 +60,3 @@ def get_iso_info(iso):
         "type": iso_type,
         "type_name": get_iso_type_name(iso_type),
     }
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Uso:")
-        print("  python3 iso_detector.py ficheiro.iso")
-        sys.exit(1)
-
-    iso = Path(sys.argv[1])
-    info = get_iso_info(iso)
-
-    print()
-    print("=" * 42)
-    print("             ISO DETECTOR")
-    print("=" * 42)
-    print()
-    print(f"ISO:   {info['path'].name}")
-    print(f"Tipo:  {info['type_name']}")
-    print()
