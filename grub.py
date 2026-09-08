@@ -150,4 +150,3 @@ def print_grub_info():
 
 if __name__ == "__main__":
     print_grub_info()
-```
